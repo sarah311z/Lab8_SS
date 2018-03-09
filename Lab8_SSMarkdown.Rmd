@@ -62,4 +62,89 @@ leaflet(oil_sf) %>%
   
   
 ```
+ ### tmap plot with the Texas state shapefile
+ 
+```{r}
+
+states <- st_read(dsn = ".", layer = "states") # can treate information as a data frame and will keep geometry of state lines
+
+tex_boarder <- states %>% 
+  filter(STATE_NAME == "Texas") %>% 
+  st_transform(4326)
+
+plot(tex_boarder)
+
+
+tm_shape(tex_boarder) +
+  tm_polygons() +
+  tm_shape(oil_sf) +
+  tm_dots(size = 0.3)
+
+```
+ 
+### convert data to spatial points patterns (combination of point data and the bounding window)
+must convert into point patter data 
+
+
+```{r}
+
+spill_sp <- as(oil_sf, "Spatial")
+spill_ppp <- as(spill_sp, "ppp")
+
+tx_sp <- as(tex_boarder, "Spatial")
+tx_owin <- as(tx_sp, "owin") # r is recognizing this as window
+
+all_ppp <- ppp(spill_ppp$x, spill_ppp$y, window = tx_owin)
+
+# last 4 functions taken spatial information and put it in language that understands (as point data)
+
+
+
+```
+### A denisty plot:
+```{r}
+plot(density(all_ppp, sigma = 0.4)) # be causious they are easy to make - can change the based on level of sigma
+
+```
+
+### Quadrat test for spatial evenness
+
+```{r}
+oil_qt <-quadrat.test(all_ppp, nx = 5, ny = 5)
+oil_qt
+
+plot(all_ppp)
+
+plot(oil_qt, add = TRUE, cex = 0.4)
+```
+
+### G - Function for nearest neighbor analysis
+
+```{r}
+r <- seq(0,1, by = 0.01)
+
+
+oil_gfun<-envelope(all_ppp, fun = Gest, r = r, nsim = 100)
+
+ggplot(oil_gfun, aes(x = r, y = obs)) +
+  geom_line(color = "black") +
+  geom_line(aes(x = r, y = theo), color = "red")
+# our observeddata has a higher porportion of point pares with nearest neighbors at shorter distance when compared to CSR data 
+# model value of CSR 
+
+
+
+```
+## Nearest Neighbor using L function (Ripleys K Standardized)
+
+```{r}
+r2 <- seq(0, 3, by = 0.5)
+
+oil_lfun<- envelope(all_ppp, fun = Lest, r = r2, nsim = 20, global = TRUE)
+# radius simulation
+
+ggplot(oil_lfun, aes(x = r2, y = obs)) +
+  geom_line(color = "black") +
+  geom_line(aes(x = r, y = theo), color = "red")
+```
 
